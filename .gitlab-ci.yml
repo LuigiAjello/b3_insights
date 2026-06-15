@@ -1,0 +1,22 @@
+stages:
+  - build-dev
+
+push_to_ecr_dev:
+  stage: build-dev
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    REPO_NAME: "radar-b3"
+    IMAGE_TAG: "dev-$CI_COMMIT_SHORT_SHA"
+  before_script:
+    - apk add --no-cache aws-cli
+  script:
+    - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+    - docker build -t $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG .
+    - docker tag $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG $ECR_REGISTRY/$REPO_NAME:dev-latest
+    - docker push $ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG
+    - docker push $ECR_REGISTRY/$REPO_NAME:dev-latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "dev"

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modelo ML — Reação a Fatos Relevantes | B3 Insight</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0e14; --panel: #141925; --border: #232a3b;
+      --text: #e6e9ef; --text-muted: #8b94a7;
+      --up: #2ecc71; --down: #e74c3c; --neutral: #5a6378; --accent: #4d8af0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; padding-bottom: 4rem; }
+    .topnav { display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem; border-bottom: 1px solid var(--border); background: var(--panel); }
+    .topnav .logo { font-weight: 700; font-size: 1.1rem; display: flex; gap: .5rem; align-items: center; }
+    .topnav a { color: var(--accent); text-decoration: none; font-size: .9rem; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+    .hero { display: flex; gap: 2rem; flex-wrap: wrap; align-items: center;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+      padding: 2rem; margin-bottom: 1.5rem; }
+    .hero .big { font-size: 3.5rem; font-weight: 800; color: var(--accent); line-height: 1; }
+    .hero .big small { font-size: 1rem; color: var(--text-muted); font-weight: 500; display: block; margin-top: .4rem; }
+    .hero .desc { flex: 1; min-width: 260px; }
+    .hero .desc h1 { font-size: 1.4rem; margin-bottom: .5rem; }
+    .hero .desc p { color: var(--text-muted); line-height: 1.5; font-size: .92rem; }
+    .badge-val { display: inline-block; margin-top: .8rem; padding: .4rem .8rem;
+      background: rgba(46,204,113,.12); color: var(--up); border: 1px solid rgba(46,204,113,.3);
+      border-radius: 8px; font-size: .82rem; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; }
+    .card h2 { font-size: 1rem; margin-bottom: 1rem; font-weight: 600; }
+    .card.full { grid-column: 1 / -1; }
+    .loading { text-align: center; color: var(--text-muted); padding: 3rem; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <div class="logo">📊 B3 Insight — Modelo ML</div>
+    <div style="display:flex;gap:1.2rem;align-items:center">
+      <a href="/treino">Treino</a>
+      <a href="/prever">Prever</a>
+      <a href="/">← Painel</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <div id="content" class="loading">Carregando resultados do modelo…</div>
+  </div>
+
+  <script>
+    const fmtPct = v => (v).toFixed(1).replace('.', ',') + '%';
+
+    async function load() {
+      let d;
+      try {
+        const res = await fetch('/api/modelo');
+        d = await res.json();
+      } catch (e) {
+        document.getElementById('content').innerHTML = '<div class="loading">Erro ao carregar o modelo.</div>';
+        return;
+      }
+      if (!d.disponivel) {
+        document.getElementById('content').innerHTML =
+          '<div class="loading">Modelo ainda não publicado no S3 (gold/modelo).</div>';
+        return;
+      }
+
+      document.getElementById('content').innerHTML = `
+        <div class="hero">
+          <div class="big">${fmtPct(d.pct_mexeram)}<small>dos fatos movem o preço</small></div>
+          <div class="desc">
+            <h1>Quais fatos relevantes realmente mexem na ação?</h1>
+            <p>De <b>${d.total.toLocaleString('pt-BR')}</b> fatos analisados (16 tickers, jan/2025–mai/2026),
+            apenas <b>${d.mexeram.toLocaleString('pt-BR')}</b> provocaram reação anormal de preço.
+            Os outros ${fmtPct(100 - d.pct_mexeram)} são ruído de mercado.</p>
+            <span class="badge-val">✓ Validado: fatos reais movem ${String(d.validacao.razao_placebo).replace('.', ',')}× mais que datas aleatórias (placebo, p ${d.validacao.p_valor})</span>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="card"><h2>Distribuição das reações</h2><div id="pie"></div></div>
+          <div class="card"><h2>Reatividade por ação (% que mexem)</h2><div id="ticker"></div></div>
+          <div class="card full"><h2>Reatividade por categoria de fato (% que mexem)</h2><div id="cat"></div></div>
+        </div>
+      `;
+
+      const layout = {
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#8b94a7', family: 'Inter' }, margin: { t: 10, r: 10, b: 40, l: 110 },
+        showlegend: false,
+      };
+      const cfg = { displayModeBar: false, responsive: true };
+
+      // Pizza
+      const dist = d.distribuicao;
+      Plotly.newPlot('pie', [{
+        type: 'pie', hole: .55,
+        labels: ['Alta anormal', 'Sem reação', 'Queda anormal'],
+        values: [dist.alta || 0, dist.neutro || 0, dist.queda || 0],
+        marker: { colors: ['#2ecc71', '#5a6378', '#e74c3c'] },
+        textinfo: 'label+percent', textfont: { color: '#fff', size: 11 },
+      }], { ...layout, margin: { t: 10, r: 10, b: 10, l: 10 }, height: 300 }, cfg);
+
+      // Por ticker
+      const tk = Object.entries(d.por_ticker).sort((a, b) => a[1] - b[1]);
+      Plotly.newPlot('ticker', [{
+        type: 'bar', orientation: 'h',
+        y: tk.map(x => x[0]), x: tk.map(x => x[1]),
+        marker: { color: '#4d8af0' },
+        text: tk.map(x => fmtPct(x[1])), textposition: 'auto',
+      }], { ...layout, height: 420 }, cfg);
+
+      // Por categoria
+      const cat = d.por_categoria.slice().sort((a, b) => a.pct - b.pct);
+      Plotly.newPlot('cat', [{
+        type: 'bar', orientation: 'h',
+        y: cat.map(c => c.categoria.length > 38 ? c.categoria.slice(0, 38) + '…' : c.categoria),
+        x: cat.map(c => c.pct),
+        marker: { color: '#9b59b6' },
+        text: cat.map(c => fmtPct(c.pct) + ' (' + c.total + ')'), textposition: 'auto',
+      }], { ...layout, height: 380, margin: { t: 10, r: 10, b: 40, l: 230 } }, cfg);
+    }
+
+    load();
+  </script>
+</body>
+</html>

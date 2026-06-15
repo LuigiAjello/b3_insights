@@ -1,0 +1,17 @@
+[Unit]
+Description=Radar B3 — Worker de coleta horária
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/radar-b3
+EnvironmentFile=/home/ubuntu/radar-b3/.env
+ExecStart=/home/ubuntu/radar-b3/.venv/bin/python scripts/worker.py
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

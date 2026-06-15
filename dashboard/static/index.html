@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plataforma de Análise — Investidores B3</title>
+  <meta name="description" content="Dashboard premium de análise de ações da B3 com cotações históricas e fatos relevantes em tempo real." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+
+  <style>
+    /* ===================================================
+       DESIGN SYSTEM — TOKENS
+       =================================================== */
+    :root {
+      --bg-base:       #090e1a;
+      --bg-surface:    #0f1729;
+      --bg-elevated:   #162035;
+      --bg-card:       rgba(22, 32, 53, 0.85);
+      --border:        rgba(99, 132, 255, 0.12);
+      --border-hover:  rgba(99, 132, 255, 0.35);
+      --accent:        #6384ff;
+      --accent-soft:   rgba(99, 132, 255, 0.15);
+      --accent-glow:   rgba(99, 132, 255, 0.4);
+      --green:         #00d26a;
+      --green-soft:    rgba(0, 210, 106, 0.12);
+      --red:           #ff4d6d;
+      --red-soft:      rgba(255, 77, 109, 0.12);
+      --yellow:        #ffc840;
+      --yellow-soft:   rgba(255, 200, 64, 0.12);
+      --text-primary:  #e8edf8;
+      --text-secondary:#7e8da8;
+      --text-muted:    #4a5568;
+      --radius-sm:     8px;
+      --radius-md:     14px;
+      --radius-lg:     20px;
+      --shadow-card:   0 4px 24px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.3);
+      --shadow-glow:   0 0 40px rgba(99,132,255,0.15);
+      --transition:    all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ===================================================
+       RESET & BASE
+       =================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(99,132,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,132,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ===================================================
+       TOP NAV
+       =================================================== */
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 64px;
+      background: rgba(9, 14, 26, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: -0.3px;
+    }
+
+    .nav-logo .logo-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--accent), #9b7fff);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    /* ===================================================
+       LAYOUT
+       =================================================== */
+    .layout {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      height: calc(100vh - 64px);
+      overflow: hidden;
+    }
+
+    /* ===================================================
+       SIDEBAR
+       =================================================== */
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 1.5rem 1.25rem;
+      gap: 1.5rem;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .sidebar-section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    /* Search / Select empresa */
+    .empresa-search {
+      position: relative;
+    }
+
+    .empresa-search input {
+      width: 100%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.88rem;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .empresa-search input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .empresa-search input::placeholder { color: var(--text-muted); }
+
+    .empresa-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 340px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    .empresa-list::-webkit-scrollbar { width: 3px; }
+    .empresa-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .empresa-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid transparent;
+    }
+
+    .empresa-item:hover {
+      background: var(--accent-soft);
+      border-color: var(--border-hover);
+    }
+
+    .empresa-item.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .empresa-ticker {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--accent);
+      min-width: 48px;
+    }
+
+    .empresa-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .empresa-nome {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .empresa-setor {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Date pickers */
+    .date-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .date-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .date-field label {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .date-field input[type="date"] {
+      width: 100%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      outline: none;
+      transition: var(--transition);
+      color-scheme: dark;
+    }
+
+    .date-field input[type="date"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    /* Period shortcuts */
+    .period-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.73rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      transition: var(--transition);
+    }
+
+    .chip:hover, .chip.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Atualização info */
+    .update-info {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(0,210,106,0.06);
+      border: 1px solid rgba(0,210,106,0.18);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .update-info .icon { font-size: 16px; }
+
+    /* ===================================================
+       MAIN CONTENT
+       =================================================== */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.75rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .main::-webkit-scrollbar { width: 6px; }
+    .main::-webkit-scrollbar-track { background: transparent; }
+    .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ===================================================
+       COMPANY HEADER
+       =================================================== */
+    .company-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .company-title {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .company-title h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--text-primary) 60%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .company-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    .badge {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge-sector {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(99,132,255,0.3);
+    }
+
+    /* ===================================================
+       KPI CARDS
+       =================================================== */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: var(--transition);
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background: linear-gradient(135deg, var(--accent-soft), transparent);
+      transition: var(--transition);
+    }
+
+    .kpi-card:hover { border-color: var(--border-hover); }
+    .kpi-card:hover::before { opacity: 1; }
+
+    .kpi-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .kpi-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -1px;
+      color: var(--text-primary);
+    }
+
+    .kpi-delta {
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kpi-delta.positive { color: var(--green); }
+    .kpi-delta.negative { color: var(--red); }
+    .kpi-delta.neutral  { color: var(--text-muted); }
+
+    /* ===================================================
+       CONTENT GRID
+       =================================================== */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 1.25rem;
+      flex: 1;
+    }
+
+    @media (max-width: 1100px) {
+      .content-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ===================================================
+       PANEL / CARD
+       =================================================== */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+
+    .panel:hover { border-color: var(--border-hover); }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title .icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent-soft);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .panel-body {
+      padding: 1rem 1.5rem 1.5rem;
+    }
+
+    /* ===================================================
+       CHART
+       =================================================== */
+    #chart-container {
+      height: 380px;
+      min-height: 300px;
+    }
+
+    .chart-placeholder {
+      height: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--text-muted);
+    }
+
+    .chart-placeholder .ph-icon { font-size: 3rem; opacity: 0.3; }
+    .chart-placeholder p { font-size: 0.85rem; }
+
+    /* ===================================================
+       FATOS RELEVANTES
+       =================================================== */
+    .fatos-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-height: 460px;
+      overflow-y: auto;
+    }
+
+    .fatos-list::-webkit-scrollbar { width: 3px; }
+    .fatos-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .fato-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .fato-item:last-child { border-bottom: none; }
+    .fato-item:hover .fato-titulo { color: var(--accent); }
+
+    .fato-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .fato-data {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .fato-cat {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--yellow-soft);
+      color: var(--yellow);
+      border: 1px solid rgba(255,200,64,0.2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+
+    .fato-titulo {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      transition: var(--transition);
+    }
+
+    .fato-link {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .fato-link:hover { text-decoration: underline; }
+
+    .fatos-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+
+    /* ===================================================
+       LOADING STATES
+       =================================================== */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-surface) 50%, var(--bg-elevated) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+      border-radius: 6px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ===================================================
+       SPINNER
+       =================================================== */
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===================================================
+       TOASTS
+       =================================================== */
+    #toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 500;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      backdrop-filter: blur(12px);
+      animation: slide-in 0.3s ease forwards;
+      max-width: 320px;
+    }
+
+    .toast.success { border-color: rgba(0,210,106,0.3); color: var(--green); }
+    .toast.error   { border-color: rgba(255,77,109,0.3); color: var(--red); }
+    .toast.info    { border-color: rgba(99,132,255,0.3); color: var(--accent); }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ===================================================
+       EMPTY & ERROR STATES
+       =================================================== */
+    .state-message {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+
+    .state-message .icon { font-size: 2.5rem; opacity: 0.4; }
+    .state-message h3 { font-size: 1rem; font-weight: 600; color: var(--text-secondary); }
+    .state-message p { font-size: 0.82rem; color: var(--text-muted); max-width: 260px; line-height: 1.5; }
+
+    /* ===================================================
+       RESPONSIVE adjustments
+       =================================================== */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { padding: 1rem; }
+      .kpi-value { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="topnav">
+    <div class="nav-logo">
+      <div class="logo-icon">📈</div>
+      <span>InvestB3 <span style="color:var(--text-secondary);font-weight:400">Analytics</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:1.5rem">
+      <a href="/modelo" style="color:var(--accent,#4d8af0);text-decoration:none;font-size:0.9rem;font-weight:600">🤖 Modelo ML</a>
+      <a href="/treino" style="color:var(--accent,#4d8af0);text-decoration:none;font-size:0.9rem;font-weight:600">📊 Treino</a>
+      <a href="/prever" style="color:var(--accent,#4d8af0);text-decoration:none;font-size:0.9rem;font-weight:600">🎲 Prever</a>
+      <div id="nav-status" class="nav-status">
+        <div class="status-dot"></div>
+        <span id="status-text">Carregando...</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <!-- Empresa selector -->
+      <div>
+        <div class="sidebar-section-label">Empresa</div>
+        <div class="empresa-search">
+          <input type="text" id="search-input" placeholder="🔍  Buscar empresa ou ticker…" autocomplete="off" />
+        </div>
+        <div class="empresa-list" id="empresa-list">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- Date range -->
+      <div>
+        <div class="sidebar-section-label">Período</div>
+        <div class="period-chips" id="period-chips">
+          <span class="chip" data-days="30">1M</span>
+          <span class="chip active" data-days="90">3M</span>
+          <span class="chip" data-days="180">6M</span>
+          <span class="chip" data-days="365">1A</span>
+          <span class="chip" data-days="730">2A</span>
+          <span class="chip" data-days="0">Tudo</span>
+        </div>
+        <div class="date-group" style="margin-top:12px">
+          <div class="date-field">
+            <label for="date-inicio">Data Inicial</label>
+            <input type="date" id="date-inicio" />
+          </div>
+          <div class="date-field">
+            <label for="date-fim">Data Final</label>
+            <input type="date" id="date-fim" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-update info -->
+      <div class="update-info">
+        <span class="icon">🤖</span>
+        <span>Cotações e Fatos são atualizados automaticamente na nuvem de hora em hora.</span>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- Company header -->
+      <div class="company-header">
+        <div class="company-title">
+          <h1 id="company-name">Selecione uma empresa</h1>
+          <div class="company-meta" id="company-meta">
+            <span class="badge badge-sector" id="company-sector" style="display:none"></span>
+            <span id="company-cvm" style="color:var(--text-muted)"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-row" id="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Preço Atual</div>
+          <div class="kpi-value" id="kpi-price">—</div>
+          <div class="kpi-delta neutral" id="kpi-delta">—</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Mínima do Período</div>
+          <div class="kpi-value" id="kpi-min">—</div>
+          <div class="kpi-delta neutral" style="font-size:0.72rem;color:var(--text-muted)">mínima histórica</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Máxima do Período</div>
+          <div class="kpi-value" id="kpi-max">—</div>
+          <div class="kpi-delta neutral" style="font-size:0.72rem;color:var(--text-muted)">máxima histórica</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Variação do Período</div>
+          <div class="kpi-value" id="kpi-perf">—</div>
+          <div class="kpi-delta neutral" id="kpi-perf-label" style="font-size:0.72rem;color:var(--text-muted)">retorno total</div>
+        </div>
+      </div>
+
+      <!-- Chart + Fatos -->
+      <div class="content-grid">
+
+        <!-- Chart panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="icon">📊</div>
+              Cotação Histórica
+            </div>
+            <div id="chart-ticker" style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--text-muted)"></div>
+          </div>
+          <div class="panel-body" style="padding:0.75rem 1rem 1rem">
+            <div id="chart-container">
+              <div class="chart-placeholder">
+                <div class="ph-icon">📉</div>
+                <p>Selecione uma empresa para ver o gráfico</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fatos panel -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="icon">📋</div>
+              Fatos Relevantes
+            </div>
+            <span id="fatos-count" style="font-size:0.75rem;color:var(--text-muted)"></span>
+          </div>
+          <div class="panel-body" style="padding:0.25rem 1.25rem 1.25rem;">
+            <div class="fatos-list" id="fatos-list">
+              <div class="fatos-empty">
+                <span style="font-size:2rem">📋</span>
+                <p>Selecione uma empresa para ver os fatos relevantes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /content-grid -->
+
+    </main>
+  </div><!-- /layout -->
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <script>
+    // ============================================================
+    // STATE
+    // ============================================================
+    const state = {
+      empresas: [],
+      selected: null,     // empresa object
+      precos: [],
+      fatos: [],
+      dateInicio: null,
+      dateFim: null,
+      loading: false,
+    };
+
+    // ============================================================
+    // UTILS
+    // ============================================================
+    const $ = id => document.getElementById(id);
+    const fmtBRL = v => v != null ? `R$ ${Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}` : '—';
+    const fmtPct = v => v != null ? `${v >= 0 ? '+' : ''}${Number(v).toFixed(2)}%` : '—';
+
+    function isoToday(offsetDays = 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      return d.toISOString().split('T')[0];
+    }
+
+    function toast(msg, type = 'info', duration = 3500) {
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.textContent = msg;
+      $('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), duration);
+    }
+
+    // ============================================================
+    // DATE INIT
+    // ============================================================
+    function initDates() {
+      $('date-fim').value = isoToday();
+      $('date-inicio').value = isoToday(-90);
+      state.dateFim = $('date-fim').value;
+      state.dateInicio = $('date-inicio').value;
+    }
+
+    // ============================================================
+    // PERIOD CHIPS
+    // ============================================================
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const days = parseInt(chip.dataset.days);
+        const fim = isoToday();
+        const inicio = days === 0 ? '2000-01-01' : isoToday(-days);
+        $('date-fim').value = fim;
+        $('date-inicio').value = inicio;
+        state.dateFim = fim;
+        state.dateInicio = inicio;
+        if (state.selected) refreshData();
+      });
+    });
+
+    $('date-inicio').addEventListener('change', e => {
+      state.dateInicio = e.target.value;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      if (state.selected) refreshData();
+    });
+
+    $('date-fim').addEventListener('change', e => {
+      state.dateFim = e.target.value;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      if (state.selected) refreshData();
+    });
+
+    // ============================================================
+    // API CALLS
+    // ============================================================
+    async function apiFetch(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function loadEmpresas() {
+      try {
+        state.empresas = await apiFetch('/api/empresas');
+        renderEmpresaList(state.empresas);
+      } catch(e) {
+        toast('Erro ao carregar lista de empresas', 'error');
+      }
+    }
+
+    async function loadStatus() {
+      try {
+        const s = await apiFetch('/api/status');
+        const $st = $('status-text');
+        if (s.ultima_atualizacao) {
+          $st.textContent = `Atualizado: ${s.ultima_atualizacao}`;
+        } else {
+          $st.textContent = 'Aguardando dados';
+        }
+      } catch(e) {
+        $('status-text').textContent = 'Sem conexão';
+      }
+    }
+
+    async function loadPrecos(ticker) {
+      const params = new URLSearchParams({ inicio: state.dateInicio, fim: state.dateFim });
+      return apiFetch(`/api/precos/${ticker}?${params}`);
+    }
+
+    async function loadFatos(codCvm) {
+      return apiFetch(`/api/fatos/${codCvm}`);
+    }
+
+    // ============================================================
+    // SELECT EMPRESA
+    // ============================================================
+    async function selectEmpresa(emp) {
+      if (state.loading) return;
+      state.selected = emp;
+      state.loading = true;
+
+      // Update sidebar active state
+      document.querySelectorAll('.empresa-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.ticker === emp.ticker);
+      });
+
+      // Update header
+      $('company-name').textContent = `${emp.nome} (${emp.ticker})`;
+      const sectorEl = $('company-sector');
+      sectorEl.textContent = emp.setor;
+      sectorEl.style.display = 'inline-flex';
+      $('company-cvm').textContent = `CVM: ${emp.codigo_cvm}`;
+      $('chart-ticker').textContent = emp.ticker;
+
+      // Show loading in chart
+      $('chart-container').innerHTML = `
+        <div class="chart-placeholder">
+          <div class="spinner"></div>
+          <p>Carregando cotações...</p>
+        </div>`;
+
+      // Show loading in fatos
+      $('fatos-list').innerHTML = `
+        <div class="fatos-empty"><div class="spinner"></div><p>Carregando...</p></div>`;
+
+      try {
+        const [precos, fatos] = await Promise.all([
+          loadPrecos(emp.ticker),
+          loadFatos(emp.codigo_cvm),
+        ]);
+        state.precos = precos;
+        state.fatos = fatos;
+        renderChart(precos, fatos, emp.ticker);
+        renderKPIs(precos);
+        renderFatos(fatos);
+      } catch(e) {
+        toast(`Erro ao carregar dados de ${emp.ticker}`, 'error');
+        showChartEmpty('Erro ao carregar dados');
+      } finally {
+        state.loading = false;
+      }
+    }
+
+    async function refreshData() {
+      if (!state.selected) return;
+      await selectEmpresa(state.selected);
+    }
+
+    // ============================================================
+    // RENDER EMPRESA LIST
+    // ============================================================
+    function renderEmpresaList(empresas) {
+      const list = $('empresa-list');
+      list.innerHTML = '';
+      empresas.forEach(emp => {
+        const el = document.createElement('div');
+        el.className = 'empresa-item';
+        el.dataset.ticker = emp.ticker;
+        el.innerHTML = `
+          <span class="empresa-ticker">${emp.ticker}</span>
+          <div class="empresa-info">
+            <span class="empresa-nome">${emp.nome}</span>
+            <span class="empresa-setor">${emp.setor}</span>
+          </div>`;
+        el.addEventListener('click', () => selectEmpresa(emp));
+        list.appendChild(el);
+      });
+    }
+
+    // Search filter
+    $('search-input').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      const filtered = state.empresas.filter(emp =>
+        emp.ticker.toLowerCase().includes(q) ||
+        emp.nome.toLowerCase().includes(q) ||
+        emp.setor.toLowerCase().includes(q)
+      );
+      renderEmpresaList(filtered);
+
+      // Re-mark active if visible
+      if (state.selected) {
+        document.querySelectorAll('.empresa-item').forEach(el => {
+          el.classList.toggle('active', el.dataset.ticker === state.selected.ticker);
+        });
+      }
+    });
+
+    // ============================================================
+    // RENDER KPIs
+    // ============================================================
+    function renderKPIs(precos) {
+      if (!precos || precos.length === 0) {
+        ['kpi-price','kpi-min','kpi-max','kpi-perf'].forEach(id => $(`${id}`).textContent = '—');
+        $('kpi-delta').textContent = '—';
+        $('kpi-delta').className = 'kpi-delta neutral';
+        return;
+      }
+
+      const closes = precos.map(p => p.close);
+      const last = closes[closes.length - 1];
+      const min = Math.min(...closes);
+      const max = Math.max(...closes);
+      const first = closes[0];
+      const perf = ((last - first) / first) * 100;
+
+      // Day change
+      let dayChange = 0;
+      const dates = precos.map(p => p.datetime.split('T')[0]);
+      const uniqueDates = [...new Set(dates)];
+      if (uniqueDates.length >= 2) {
+        const lastDay = uniqueDates[uniqueDates.length - 1];
+        const prevDay = uniqueDates[uniqueDates.length - 2];
+        const lastDayPrices = precos.filter(p => p.datetime.startsWith(lastDay));
+        const prevDayPrices = precos.filter(p => p.datetime.startsWith(prevDay));
+        if (lastDayPrices.length && prevDayPrices.length) {
+          const lastClose = lastDayPrices[lastDayPrices.length - 1].close;
+          const prevClose = prevDayPrices[prevDayPrices.length - 1].close;
+          dayChange = ((lastClose - prevClose) / prevClose) * 100;
+        }
+      }
+
+      $('kpi-price').textContent = fmtBRL(last);
+      $('kpi-min').textContent = fmtBRL(min);
+      $('kpi-max').textContent = fmtBRL(max);
+      $('kpi-perf').textContent = fmtPct(perf);
+
+      const deltaEl = $('kpi-delta');
+      deltaEl.textContent = `${dayChange >= 0 ? '▲' : '▼'} ${fmtPct(dayChange)} hoje`;
+      deltaEl.className = `kpi-delta ${dayChange >= 0 ? 'positive' : 'negative'}`;
+
+      const perfEl = $('kpi-perf');
+      perfEl.style.color = perf >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+
+    // ============================================================
+    // RENDER CHART
+    // ============================================================
+    function showChartEmpty(msg = 'Sem dados para o período selecionado') {
+      $('chart-container').innerHTML = `
+        <div class="chart-placeholder">
+          <div class="ph-icon">📉</div>
+          <p>${msg}</p>
+        </div>`;
+    }
+
+    function renderChart(precos, fatos, ticker) {
+      if (!precos || precos.length === 0) {
+        showChartEmpty();
+        return;
+      }
+
+      $('chart-container').innerHTML = '<div id="plotly-chart" style="width:100%;height:380px"></div>';
+
+      const xs = precos.map(p => p.datetime);
+      const ys = precos.map(p => p.close);
+      const firstClose = ys[0];
+      const lastClose  = ys[ys.length - 1];
+      const isPositive = lastClose >= firstClose;
+      const lineColor  = isPositive ? '#00d26a' : '#ff4d6d';
+      const fillColor  = isPositive ? 'rgba(0,210,106,0.07)' : 'rgba(255,77,109,0.07)';
+
+      const traces = [
+        {
+          x: xs,
+          y: ys,
+          mode: 'lines',
+          name: ticker,
+          line: { color: lineColor, width: 2, shape: 'spline', smoothing: 0.4 },
+          fill: 'tozeroy',
+          fillcolor: fillColor,
+          hovertemplate: '<b>%{x|%d/%m/%Y %H:%M}</b><br>R$ %{y:.2f}<extra></extra>',
+        }
+      ];
+
+      // Fatos relevantes annotations
+      const shapes = [];
+      const annotations = [];
+      if (fatos && fatos.length > 0) {
+        const minDt = new Date(xs[0]);
+        const maxDt = new Date(xs[xs.length - 1]);
+
+        fatos.forEach((f, i) => {
+          if (!f.timestamp) return;
+          const fd = new Date(f.timestamp);
+          if (fd < minDt || fd > maxDt) return;
+
+          shapes.push({
+            type: 'line',
+            x0: f.timestamp, x1: f.timestamp,
+            y0: 0, y1: 1,
+            yref: 'paper',
+            line: { color: 'rgba(255,200,64,0.5)', width: 1, dash: 'dot' }
+          });
+
+          if (i % 3 === 0) { // evita poluição visual
+            annotations.push({
+              x: f.timestamp,
+              y: 1,
+              yref: 'paper',
+              text: '📋',
+              showarrow: false,
+              font: { size: 10 },
+              yanchor: 'bottom',
+            });
+          }
+        });
+      }
+
+      const layout = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor:  'transparent',
+        margin: { l: 50, r: 20, t: 10, b: 40 },
+        font: { family: 'Inter, sans-serif', color: '#7e8da8', size: 11 },
+        xaxis: {
+          gridcolor: 'rgba(99,132,255,0.06)',
+          linecolor: 'transparent',
+          tickfont: { size: 10 },
+          showgrid: true,
+        },
+        yaxis: {
+          gridcolor: 'rgba(99,132,255,0.06)',
+          linecolor: 'transparent',
+          tickfont: { size: 10 },
+          tickprefix: 'R$ ',
+          tickformat: '.2f',
+        },
+        hovermode: 'x unified',
+        hoverlabel: {
+          bgcolor: '#162035',
+          bordercolor: 'rgba(99,132,255,0.3)',
+          font: { color: '#e8edf8', size: 12 },
+        },
+        shapes,
+        annotations,
+        showlegend: false,
+      };
+
+      const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['select2d','lasso2d','autoScale2d'],
+        toImageButtonOptions: { filename: `${ticker}_cotacao` },
+      };
+
+      Plotly.newPlot('plotly-chart', traces, layout, config);
+    }
+
+    // ============================================================
+    // RENDER FATOS
+    // ============================================================
+    function renderFatos(fatos) {
+      const list = $('fatos-list');
+      $('fatos-count').textContent = fatos.length > 0 ? `${fatos.length} documentos` : '';
+
+      if (!fatos || fatos.length === 0) {
+        list.innerHTML = `
+          <div class="fatos-empty">
+            <span style="font-size:2rem">📭</span>
+            <p>Nenhum fato relevante encontrado para esta empresa.</p>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = fatos.map(f => `
+        <div class="fato-item">
+          <div class="fato-meta">
+            <span class="fato-data">${f.data || '—'}</span>
+            ${f.categoria ? `<span class="fato-cat" title="${f.categoria}">${f.categoria.substring(0,25)}…</span>` : ''}
+          </div>
+          <div class="fato-titulo">${f.titulo}</div>
+          ${f.link && f.link !== 'nan' && f.link !== '' ? `
+            <a class="fato-link" href="${f.link}" target="_blank" rel="noopener">
+              ↗ Ver documento
+            </a>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    (async () => {
+      initDates();
+      await Promise.all([loadEmpresas(), loadStatus()]);
+
+      // Auto-select first empresa
+      if (state.empresas.length > 0) {
+        selectEmpresa(state.empresas[0]);
+      }
+    })();
+  </script>
+</body>
+</html>

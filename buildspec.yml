@@ -1,0 +1,20 @@
+version: 0.2
+
+# Build da imagem do Radar B3 na AWS (CodeBuild) e push pro ECR.
+# Variáveis ECR_URI e TAG vêm da configuração do projeto CodeBuild.
+
+phases:
+  pre_build:
+    commands:
+      - echo "Login no ECR..."
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$(echo $ECR_URI | cut -d/ -f1)"
+  build:
+    commands:
+      - echo "Build da imagem (linux/amd64)..."
+      - docker build -t "$ECR_URI:latest" -t "$ECR_URI:$TAG" .
+  post_build:
+    commands:
+      - echo "Push pro ECR..."
+      - docker push "$ECR_URI:latest"
+      - docker push "$ECR_URI:$TAG"
+      - echo "Imagem publicada no ECR (latest + tag)"

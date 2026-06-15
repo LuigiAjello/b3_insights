@@ -1,0 +1,151 @@
+# ==============================================================================
+#  Radar B3 / b3insight — .gitignore
+#  Regra de ouro: NADA de segredo, NADA de dado pesado, NADA de artefato gerado.
+# ==============================================================================
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  SEGREDOS E CREDENCIAIS  (jamais commitar — vazamento = chave comprometida)
+# ──────────────────────────────────────────────────────────────────────────────
+# Arquivos de ambiente (todas as variações), exceto o template de exemplo
+.env
+.env.*
+*.env
+!.env.example
+
+# Chaves privadas, certificados e key pairs
+*.pem
+*.key
+*.ppk
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.keystore
+*.jks
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*_rsa
+*.asc
+*.gpg
+
+# Credenciais / state de cloud
+.aws/
+aws-credentials*
+credentials
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Tokens e segredos diversos
+secrets.*
+*secret*.json
+*.token
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  PYTHON
+# ──────────────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+wheels/
+*.egg
+*.egg-info/
+.eggs/
+
+# Ambientes virtuais (uv.lock e pyproject.toml SÃO commitados; .venv não)
+.venv/
+venv/
+env/
+ENV/
+
+# Cache de ferramentas
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.cache/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  DADOS  (data lake local — pode chegar a gigabytes; vive no S3, não no Git)
+# ──────────────────────────────────────────────────────────────────────────────
+dados/
+data/
+bronze/
+silver/
+gold/
+*.parquet
+*.csv
+*.tsv
+*.xlsx
+*.pdf
+*.zip
+*.tar.gz
+
+# Mantém a estrutura de pastas vazias versionada
+!**/.gitkeep
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  ARTEFATOS DE ML  (gerados no treino — exceto o modelo-semente que vai no Docker)
+# ──────────────────────────────────────────────────────────────────────────────
+*.joblib
+*.pkl
+*.pickle
+*.h5
+*.onnx
+metrics*.json
+diagnostico*.json
+# modelo-semente embarcado na imagem Docker — DEVE ir no repositório
+!ml/artefatos_seed/
+!ml/artefatos_seed/**
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  LOGS E TEMPORÁRIOS
+# ──────────────────────────────────────────────────────────────────────────────
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+nohup.out
+deploy/
+app.tar.gz
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  IDEs / EDITORES / FERRAMENTAS
+# ──────────────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.sublime-*
+.claude/
+.superpowers/
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  SISTEMA OPERACIONAL
+# ──────────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini

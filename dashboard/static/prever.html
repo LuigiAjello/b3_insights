@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prever — Modelo ao vivo | B3 Insight</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0a0d13; --panel:#121724; --panel-2:#161c2c; --border:#222a3d;
+      --text:#e8ebf2; --muted:#8a93a8; --faint:#5b6479;
+      --up:#34d399; --down:#f87171; --neutral:#5a6378;
+      --accent:#5b9dff; --accent-2:#a78bfa; --warn:#fbbf24;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:radial-gradient(1200px 600px at 80% -10%,rgba(167,139,250,.08),transparent 60%),var(--bg);
+      color:var(--text);font-family:'Inter',-apple-system,sans-serif;padding-bottom:5rem;-webkit-font-smoothing:antialiased}
+    .nav{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+      padding:.9rem 1.6rem;border-bottom:1px solid var(--border);background:rgba(10,13,19,.8);backdrop-filter:blur(10px)}
+    .nav .brand{font-weight:800;letter-spacing:-.02em;display:flex;gap:.55rem;align-items:center;font-size:1.02rem}
+    .nav .brand .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 0 14px var(--accent)}
+    .nav .links{display:flex;gap:.3rem;flex-wrap:wrap}
+    .nav .links a{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:500;padding:.4rem .75rem;border-radius:8px;transition:.15s}
+    .nav .links a:hover{color:var(--text);background:var(--panel)}
+    .nav .links a.active{color:var(--text);background:var(--panel-2);border:1px solid var(--border)}
+    .wrap{max-width:1120px;margin:0 auto;padding:2rem 1.6rem}
+    .eyebrow{color:var(--accent-2);font-weight:600;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase}
+    h1.title{font-size:2rem;font-weight:800;letter-spacing:-.03em;margin:.4rem 0 .5rem}
+    .lead{color:var(--muted);max-width:680px;line-height:1.6;font-size:.96rem}
+    .row{display:grid;gap:1.1rem;margin-top:1.4rem}
+    .cards-2{grid-template-columns:1fr 1fr}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:16px;padding:1.4rem 1.5rem}
+    .summary{display:flex;gap:1rem;flex-wrap:wrap}
+    .summary .box{flex:1;min-width:160px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem}
+    .summary .box .v{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;line-height:1}
+    .summary .box .l{color:var(--muted);font-size:.8rem;margin-top:.45rem}
+    .controls{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:1.4rem}
+    .btn{cursor:pointer;border:1px solid var(--border);background:var(--panel-2);color:var(--text);
+      padding:.7rem 1.1rem;border-radius:11px;font-size:.9rem;font-weight:600;font-family:inherit;transition:.15s}
+    .btn:hover{border-color:var(--accent)}
+    .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:#0a0d13}
+    .btn.primary:hover{filter:brightness(1.08)}
+    .seg{display:inline-flex;border:1px solid var(--border);border-radius:11px;overflow:hidden}
+    .seg button{cursor:pointer;border:none;background:transparent;color:var(--muted);padding:.7rem 1rem;font-size:.86rem;font-weight:600;font-family:inherit}
+    .seg button.on{background:var(--panel-2);color:var(--text)}
+
+    .stage-card{margin-top:1.3rem;border:1px solid var(--border);border-radius:18px;overflow:hidden;
+      background:linear-gradient(180deg,var(--panel),var(--panel-2));opacity:0;transform:translateY(8px);transition:.35s}
+    .stage-card.show{opacity:1;transform:none}
+    .sc-head{padding:1.3rem 1.6rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+    .sc-head .co{font-size:1.25rem;font-weight:700;letter-spacing:-.02em}
+    .sc-head .tk{font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:600}
+    .sc-head .meta{color:var(--muted);font-size:.84rem;margin-top:.3rem}
+    .sc-head .assunto{color:var(--text);font-size:.92rem;margin-top:.55rem;max-width:620px;line-height:1.45}
+    .splitbadge{padding:.32rem .7rem;border-radius:999px;font-size:.74rem;font-weight:700;height:fit-content;white-space:nowrap}
+    .splitbadge.teste{background:rgba(91,157,255,.14);color:var(--accent);border:1px solid rgba(91,157,255,.3)}
+    .splitbadge.treino{background:rgba(138,147,168,.14);color:var(--muted);border:1px solid var(--border)}
+    .sc-body{display:grid;grid-template-columns:1.1fr 1fr;gap:0}
+    .sc-body>div{padding:1.4rem 1.6rem}
+    .sc-body>div:first-child{border-right:1px solid var(--border)}
+    .lbl{color:var(--faint);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:.6rem}
+    .gauge{height:14px;border-radius:999px;background:#0c1019;border:1px solid var(--border);overflow:hidden;position:relative}
+    .gauge>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0;transition:width .6s ease}
+    .gauge-val{font-family:'JetBrains Mono',monospace;font-size:1.7rem;font-weight:700;margin-top:.6rem}
+    .verdict{font-size:1.05rem;font-weight:700;margin-top:.2rem}
+    .real-row{display:flex;align-items:center;gap:.6rem;margin-top:.4rem}
+    .tag{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .8rem;border-radius:10px;font-weight:700;font-size:.92rem}
+    .tag.up{background:rgba(52,211,153,.13);color:var(--up)}
+    .tag.down{background:rgba(248,113,113,.13);color:var(--down)}
+    .tag.flat{background:rgba(138,147,168,.13);color:var(--muted)}
+    .hit{margin-top:1.1rem;padding:.7rem 1rem;border-radius:12px;font-weight:700;font-size:.9rem;display:flex;align-items:center;gap:.5rem}
+    .hit.ok{background:rgba(52,211,153,.1);color:var(--up);border:1px solid rgba(52,211,153,.28)}
+    .hit.no{background:rgba(248,113,113,.1);color:var(--down);border:1px solid rgba(248,113,113,.28)}
+    .dir{margin-top:1.1rem;color:var(--muted);font-size:.84rem;line-height:1.5;border-top:1px dashed var(--border);padding-top:1rem}
+
+    table{width:100%;border-collapse:collapse;margin-top:.4rem;font-size:.85rem}
+    th{text-align:left;color:var(--faint);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;padding:.6rem .5rem;border-bottom:1px solid var(--border)}
+    td{padding:.6rem .5rem;border-bottom:1px solid rgba(34,42,61,.5)}
+    td .mini{font-family:'JetBrains Mono',monospace}
+    .dotok{color:var(--up)} .dotno{color:var(--down)}
+    .loading{text-align:center;color:var(--muted);padding:4rem}
+    .foot{color:var(--faint);font-size:.78rem;text-align:center;margin-top:2rem}
+    @media(max-width:820px){.cards-2{grid-template-columns:1fr}.sc-body{grid-template-columns:1fr}.sc-body>div:first-child{border-right:none;border-bottom:1px solid var(--border)}h1.title{font-size:1.6rem}}
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="brand"><span class="dot"></span> B3 Insight</div>
+    <div class="links">
+      <a href="/">Painel</a>
+      <a href="/modelo">Reatividade</a>
+      <a href="/treino">Treino</a>
+      <a href="/prever" class="active">Prever</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <div id="content" class="loading">Carregando demonstração…</div>
+  </div>
+
+  <script>
+    const pct = v => v==null?'—':(Number(v)*100).toFixed(0)+'%';
+    const fmt = v => v==null?'—':Number(v).toLocaleString('pt-BR');
+    let SPLIT='teste';
+
+    async function init(){
+      let d;
+      try{ d = await (await fetch('/api/prever')).json(); }
+      catch(e){ return fail('Erro ao carregar.'); }
+      if(!d.disponivel) return fail('Demonstração ainda não publicada no S3 (o worker gera no próximo ciclo).');
+
+      const rt=d.resumo.treino||{}, re=d.resumo.teste||{};
+      document.getElementById('content').innerHTML = `
+        <div class="eyebrow">Modelo ao vivo</div>
+        <h1 class="title">Veja o porteiro decidindo — em fatos que ele nunca viu</h1>
+        <p class="lead">Sorteamos um fato relevante real e mostramos a previsão do modelo
+           <b>lado a lado com o que de fato aconteceu</b> com a ação. O conjunto de
+           <b>teste</b> é o holdout temporal: dados posteriores ao treino, nunca vistos pelo modelo.</p>
+
+        <div class="summary row" style="margin-top:1.4rem">
+          <div class="box"><div class="v" style="color:var(--muted)">${re.acuracia!=null?re.acuracia.toFixed(1).replace('.',',')+'%':'—'}</div>
+            <div class="l">Acurácia no teste (holdout) · ${fmt(re.n)} fatos</div></div>
+          <div class="box"><div class="v" style="color:var(--faint)">${rt.acuracia!=null?rt.acuracia.toFixed(1).replace('.',',')+'%':'—'}</div>
+            <div class="l">Acurácia no treino · ${fmt(rt.n)} fatos</div></div>
+          <div class="box"><div class="v" style="color:var(--accent)">${fmt((re.movers_reais||0)+(rt.movers_reais||0))}</div>
+            <div class="l">Fatos que moveram o preço (reais)</div></div>
+        </div>
+
+        <div class="controls">
+          <div class="seg" id="seg">
+            <button data-s="teste" class="on">Conjunto de teste</button>
+            <button data-s="treino">Conjunto de treino</button>
+          </div>
+          <button class="btn primary" id="sortear">🎲 Sortear um fato</button>
+        </div>
+
+        <div id="stage"></div>
+
+        <div class="card" style="margin-top:1.6rem"><h2 style="font-size:.92rem;font-weight:600;margin-bottom:.4rem">Amostra do conjunto de teste</h2>
+          <div id="tabela"></div></div>
+
+        <div class="foot">Previsões geradas na AWS (Fargate) a partir do modelo publicado no S3</div>
+      `;
+
+      document.querySelectorAll('#seg button').forEach(b=>b.onclick=()=>{
+        document.querySelectorAll('#seg button').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on'); SPLIT=b.dataset.s;
+      });
+      document.getElementById('sortear').onclick=sortear;
+      renderTabela(d.exemplos||[]);
+      sortear();
+    }
+
+    async function sortear(){
+      let r;
+      try{ r = await (await fetch('/api/prever/sortear?split='+SPLIT)).json(); }
+      catch(e){ return; }
+      if(!r.disponivel) return;
+      renderFato(r.fato);
+    }
+
+    function renderFato(f){
+      const vaiMexer=f.pred_mexeu===1;
+      const mexeu=f.mexeu_real===1;
+      const acerto=f.acertou_mexeu;
+      const conf=Math.round(f.prob_mexer*100);
+      const realTag = mexeu
+        ? (f.direcao_real==='alta'?`<span class="tag up">▲ Mexeu (alta)</span>`
+           :f.direcao_real==='queda'?`<span class="tag down">▼ Mexeu (queda)</span>`
+           :`<span class="tag up">● Mexeu</span>`)
+        : `<span class="tag flat">— Não mexeu</span>`;
+
+      let dirBlock='';
+      if(mexeu){
+        const altaProb=Math.round(f.prob_alta*100);
+        dirBlock=`<div class="dir"><b>Camada experimental (direção):</b> o modelo estimou
+          <b>${altaProb}%</b> de chance de alta — real foi <b>${f.direcao_real}</b>.
+          Lembrando: a direção tem baixa confiança e é mostrada só como exploração.</div>`;
+      }
+
+      const html=`
+        <div class="stage-card" id="sc">
+          <div class="sc-head">
+            <div>
+              <div class="co">${f.empresa||'—'} <span class="tk">${f.ticker||''}</span></div>
+              <div class="meta">${f.categoria||'—'} · ${f.data||''}</div>
+              <div class="assunto">"${f.assunto||'(sem assunto)'}"</div>
+            </div>
+            <div class="splitbadge ${f.split}">${f.split==='teste'?'HOLDOUT · nunca visto':'treino'}</div>
+          </div>
+          <div class="sc-body">
+            <div>
+              <div class="lbl">Previsão do porteiro</div>
+              <div class="gauge"><i id="g"></i></div>
+              <div class="gauge-val" style="color:${vaiMexer?'var(--accent)':'var(--muted)'}">${conf}%</div>
+              <div class="verdict" style="color:${vaiMexer?'var(--accent)':'var(--muted)'}">
+                ${vaiMexer?'→ Vai mexer no preço':'→ Não deve mexer'}</div>
+            </div>
+            <div>
+              <div class="lbl">O que aconteceu de verdade</div>
+              <div class="real-row">${realTag}</div>
+              <div class="hit ${acerto?'ok':'no'}">${acerto?'✓ O modelo acertou':'✗ O modelo errou'}</div>
+              ${dirBlock}
+            </div>
+          </div>
+        </div>`;
+      const host=document.getElementById('stage');
+      host.innerHTML=html;
+      requestAnimationFrame(()=>{document.getElementById('sc').classList.add('show');
+        document.getElementById('g').style.width=conf+'%';});
+    }
+
+    function renderTabela(rows){
+      const t=`<table><thead><tr>
+        <th>Empresa</th><th>Categoria</th><th>Prob.</th><th>Previsão</th><th>Real</th><th></th>
+      </tr></thead><tbody>${rows.map(f=>`
+        <tr>
+          <td><b>${f.ticker||'—'}</b></td>
+          <td>${f.categoria||'—'}</td>
+          <td class="mini">${Math.round(f.prob_mexer*100)}%</td>
+          <td>${f.pred_mexeu?'mexe':'não'}</td>
+          <td>${f.mexeu_real?(f.direcao_real==='alta'?'▲ alta':f.direcao_real==='queda'?'▼ queda':'mexeu'):'não'}</td>
+          <td class="${f.acertou_mexeu?'dotok':'dotno'}">${f.acertou_mexeu?'✓':'✗'}</td>
+        </tr>`).join('')}</tbody></table>`;
+      document.getElementById('tabela').innerHTML=t;
+    }
+    function fail(m){document.getElementById('content').innerHTML=`<div class="loading">${m}</div>`;}
+    init();
+  </script>
+</body>
+</html>
