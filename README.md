@@ -1,5 +1,7 @@
 # 📊 Radar B3 — Análise Fundamentalista de Ações com IA
 
+> 🌐 **Idioma:** **Português** · [English](./README.en.md)
+
 > Plataforma que coleta, processa e analisa dados de empresas listadas na **B3**
 > (bolsa brasileira) e entrega ao investidor leigo uma leitura simples da saúde
 > financeira de cada ação — fatos relevantes classificados, preço histórico,
